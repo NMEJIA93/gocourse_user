@@ -50,6 +50,7 @@ func (r *repository) GetAll(ctx context.Context, filter Filters, offset int, lim
 	tx = tx.Limit(limit).Offset(offset)
 	result := tx.Order("Created_at desc").Find(&user)
 	if result.Error != nil {
+		r.log.Println(result.Error)
 		return nil, result.Error
 	}
 	return user, nil
@@ -61,6 +62,7 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.User, error) {
 	err := r.db.WithContext(ctx).First(&user).Error
 
 	if err != nil {
+		r.log.Println(err)
 		return nil, err
 	}
 	return &user, nil
@@ -78,6 +80,7 @@ func (r *repository) Delete(ctx context.Context, id string) error {
 	result := r.db.Delete(&user).Error
 
 	if result != nil {
+		r.log.Println(result)
 		return result
 	}
 
@@ -101,6 +104,7 @@ func (r *repository) Update(ctx context.Context, id string, firstName *string, l
 	}
 
 	if err := r.db.WithContext(ctx).Model(&domain.User{}).Where("id = ?", id).Updates(values).Error; err != nil {
+		r.log.Println(err)
 		return err
 	}
 
