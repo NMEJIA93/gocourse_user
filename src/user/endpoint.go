@@ -1,23 +1,22 @@
 package user
 
 import (
-	"encoding/json"
+	"context"
+	"errors"
 	"fmt"
+	"github.com/NMEJIA93/go_lib_response/response"
 	"github.com/NMEJIA93/gocourse_meta/meta"
-	"net/http"
-	"strconv"
-
-	"github.com/gorilla/mux"
 )
 
 type (
-	Controller func(w http.ResponseWriter, r *http.Request)
-	Endpoints  struct {
+	Controller func(ctx context.Context, request interface{}) (interface{}, error)
+
+	Endpoints struct {
 		Create Controller
-		Get    Controller
-		GetAll Controller
-		Update Controller
-		Delete Controller
+		//Get    Controller
+		//GetAll Controller
+		//Update Controller
+		//Delete Controller
 	}
 	CreateReq struct {
 		FirstName string `json:"first_name"`
@@ -51,57 +50,39 @@ type (
 func MakeEndpoints(s Service, config Config) Endpoints {
 	return Endpoints{
 		Create: makeCreateEndpoint(s),
-		Get:    makeGetEndpoint(s),
-		GetAll: makeGetAllEndpoint(s, config),
-		Update: makeUpdateEndpoint(s),
-		Delete: makeDeleteEndpoint(s),
+		//Get:    makeGetEndpoint(s),
+		//GetAll: makeGetAllEndpoint(s, config),
+		//Update: makeUpdateEndpoint(s),
+		//Delete: makeDeleteEndpoint(s),
 	}
 }
 
 func makeCreateEndpoint(s Service) Controller {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req CreateReq
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(&Response{Status: 400, Error: "Invalid request", Data: nil})
-			return
-		}
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+
+		req := request.(CreateReq)
 
 		if req.FirstName == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(&Response{
-				Status: 400,
-				Error:  "first name is required",
-				Data:   nil})
-		}
-		if req.LastName == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(&Response{
-				Status: 400,
-				Error:  "last name is required",
-				Data:   nil},
-			)
+			return nil, response.BadRequest(fmt.Sprint(errors.New("first name is required")))
 		}
 
-		dto := CreateUserDTO{
+		if req.LastName == "" {
+			return nil, response.BadRequest(fmt.Sprint("last name is required"))
+		}
+
+		userRequest := CreateUserDTO{
 			FirstName: req.FirstName,
 			LastName:  req.LastName,
 			Email:     req.Email,
 			Phone:     req.Phone,
 		}
 
-		user, serviceErr := s.Create(dto)
+		user, serviceErr := s.Create(ctx, userRequest)
 		if serviceErr != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(&Response{
-				Status: 400,
-				Error:  serviceErr.Error(),
-			})
-
-			return
+			return nil, response.InternalServerError(fmt.Sprint(serviceErr))
 		}
-		responseDto := ResponseUserDto{
+
+		userResponse := ResponseUserDto{
 			ID:        user.ID,
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
@@ -109,13 +90,13 @@ func makeCreateEndpoint(s Service) Controller {
 			Phone:     user.Phone,
 		}
 
-		fmt.Println("Create user: ", responseDto.ID)
-		json.NewEncoder(w).Encode(&Response{
-			Status: 200,
-			Data:   responseDto,
-		})
+		fmt.Println("Create user: ", userResponse.ID)
+
+		return response.Created("success", userResponse, nil), nil
 	}
 }
+
+/*
 
 func makeDeleteEndpoint(s Service) Controller {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -260,3 +241,5 @@ func makeUpdateEndpoint(s Service) Controller {
 		})
 	}
 }
+
+*/
