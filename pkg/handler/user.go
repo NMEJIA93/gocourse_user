@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/NMEJIA93/go_lib_response/response"
 	"net/http"
+	"strconv"
 
 	"github.com/NMEJIA93/gocourse_user/src/user"
 	"github.com/go-kit/kit/endpoint"
@@ -27,6 +28,20 @@ func NewUserHTTPServer(cxt context.Context, endpoints user.Endpoints) http.Handl
 		encodeResponse,
 		options...,
 	)).Methods("POST")
+
+	r.Handle("/user/{id}", httptransport.NewServer(
+		endpoint.Endpoint(endpoints.Get),
+		decodeGetUSer,
+		encodeResponse,
+		options...,
+	)).Methods("GET")
+
+	r.Handle("/user", httptransport.NewServer(
+		endpoint.Endpoint(endpoints.GetAll),
+		decodeGetAllUSer,
+		encodeResponse,
+		options...,
+	)).Methods("GET")
 
 	return r
 }
@@ -56,4 +71,29 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	//json.NewEncoder(w).Encode(resp)
 	_ = json.NewEncoder(w).Encode(resp)
 
+}
+
+func decodeGetUSer(_ context.Context, r *http.Request) (interface{}, error) {
+	p := mux.Vars(r)
+	req := user.GetReq{
+		ID: p["id"],
+	}
+
+	return req, nil
+}
+
+func decodeGetAllUSer(_ context.Context, r *http.Request) (interface{}, error) {
+	v := r.URL.Query()
+
+	limit, _ := strconv.Atoi(v.Get("limit"))
+	page, _ := strconv.Atoi(v.Get("page"))
+
+	req := user.GetAllReq{
+		FirstName: v.Get("first_name"),
+		LastName:  v.Get("last_name"),
+		Limit:     limit,
+		Page:      page,
+	}
+
+	return req, nil
 }
